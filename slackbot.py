@@ -42,25 +42,47 @@ def message_handler(message):
         pass
 
 
-def youtube_search(channel,search):
-    #sc.rtm_send_message(channel,"테스트테스트!"+youtube_topic)
-    youtube_uri = "http://www.youtube.com"
-    search_uri = youtube_uri+youtube_search_parser(search)
-    sc.rtm_send_message(channel,search_uri)
+def youtube(channel,search):
+    def youtube_random(hrefs):
+        print hrefs
+        return random.choice(hrefs)['href']
+    def youtube_search(hrefs):
+        return hrefs[0]['href']
+    youtube_option = {
+            'search' : youtube_search,
+            'random' : youtube_random,
+            }
+    option = search.split(' ')[1] if search.split(' ')[1] in youtube_option.keys() else 'search'
+    print search
+    search = re.findall(r'".*"',search)
+    print search
+    if not search:
+        sc.rtm_send_message(channel,'Usage: !youtube <search(default)/random> "찾는 영상(따옴표 안에 넣어주세요)"')
+        return
+    search = search[0]
+
+    hrefs = youtube_parser(search)
+    if not hrefs:
+        sc.rtm_send_message(channel,'해당 주제의 영상이 없습니다')
+    else:
+        youtube_uri = "http://www.youtube.com"
+        search_uri = youtube_uri+youtube_option[option](hrefs)
+        sc.rtm_send_message(channel,search_uri)
 
 def youtube_repeat(channel,search):
     youtube_repeat_uri = "http://listenonrepeat.com"
-    search_uri = youtube_repeat_uri+youtube_search_parser(search)
+    search_uri = youtube_repeat_uri+youtube_search(search)
     sc.rtm_send_message(channel,search_uri)
 
-def youtube_search_parser(youtube_topic):
+def youtube_parser(youtube_topic):
     youtube_searh_uri = "http://www.youtube.com/results?search_query="
     request = urllib.urlopen(iriToUri(youtube_searh_uri+youtube_topic))
     search = BeautifulSoup(request)
     hrefs = search.find_all('a',href=True)
     video_hrefs = filter(lambda href: href['href']\
             if re.findall('watch',href['href']) else False,hrefs)
-    return random.choice(video_hrefs)['href'] 
+    #return random.choice(video_hrefs)['href'] 
+    return video_hrefs
 
 def init(message):
     sc.rtm_send_message(bot_alert_channel,'봇이 켜졌네?')
@@ -111,16 +133,21 @@ def calculate(expr, advanced=False):
 
 def calc(channel,message):
     message = message.strip()
-    calc_result = calculate(message)
+    calc_result = calculate(message,True)
     print calc_result
     if calc_result:
-        sc.rtm_send_message(channel,calc_result)
+        sc.rtm_send_message(channel,str(calc_result))
     else:
         sc.rtm_send_message(channel,"안해줘 돌아가")
 
+def command_info(channel,message):
+    sc.rtm_send_message(channel,"사용가능한 명령어는 %r 입니다" % bot_command_factory.keys())
+  
+
 bot_command_factory = {
-        "youtube" : youtube_search,
-        "youtuberepeat" : youtube_repeat,
+        "command" : command_info,
+        "youtube" : youtube,
+        #"youtuberepeat" : youtube_repeat,
         #"imgur" : imgur_search,
         #"call" : call,
         "calc" : calc,
